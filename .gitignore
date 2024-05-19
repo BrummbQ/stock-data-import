@@ -1,0 +1,18 @@
+data
+*.zip
+
+# system
+.DS_Store
+
+# python
+__pycache__
+lambda-layer/create_layer/*
+lambda-layer/python
+venv
+*.ipynb
+
+# tf
+.terraform
+terraform.tfstate
+terraform.tfstate.*
+.terraform.tfstate.lock.info
