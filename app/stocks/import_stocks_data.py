@@ -228,9 +228,12 @@ def read_table_row(
             if int(year) and len(str(year)) == 4:
                 years.append(int(year))
                 formatted_data = table_df[col][row]
+                # find curr in entry: 1.200,23 EUR -> EUR
                 data_currency = find_curr(formatted_data)
                 if data_currency is not None:
-                    formatted_data = formatted_data.split(data_currency)[0].strip()
+                    # remove curr from entry: 1.200,23 EUR -> 1200,23
+                    formatted_data = text_currency_to_float(formatted_data.split(data_currency)[0].strip())
+                    # overwrite with currency from entry
                     currency = data_currency
 
                 if multiply:

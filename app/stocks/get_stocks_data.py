@@ -2,10 +2,10 @@ import io
 from datetime import datetime, timezone
 import csv
 
-
 from .lib.data import fetch_stock_meta, add_stock_meta
 from .lib.constants import StockDataKey
 from .lib.data_completer import fill_missing_values
+from .lib.function import invoke_import_stocks
 
 
 def handler(event, context):
@@ -16,6 +16,8 @@ def handler(event, context):
     if meta_item is None:
         print("Adding new stock entry:", stock_isin)
         add_stock_meta(stock_isin)
+        # trigger import function
+        invoke_import_stocks(stock_isin)
     else:
         print("Stock entry found:", meta_item)
 

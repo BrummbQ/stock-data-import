@@ -94,8 +94,8 @@ resource "aws_iam_role_policy_attachment" "lambda_policy" {
    policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
           
-resource "aws_iam_role_policy" "dynamodb-lambda-policy" {
-   name = "dynamodb_lambda_policy"
+resource "aws_iam_role_policy" "lambda_role_policy" {
+   name = "lambda_role_policy"
    role = aws_iam_role.iam_for_lambda.id
    policy = jsonencode({
       "Version" : "2012-10-17",
@@ -115,6 +115,12 @@ resource "aws_iam_role_policy" "dynamodb-lambda-policy" {
           "Effect": "Allow",
           "Action": "secretsmanager:GetSecretValue",
           "Resource": "arn:aws:secretsmanager:eu-west-3:584235616162:secret:Stocks_Scrappey_Key-cc3kOa"
+        },
+        {
+          "Sid": "InvokeImportStocksLambdaPermission",
+          "Effect": "Allow",
+          "Action": ["lambda:InvokeFunction"],
+          "Resource": "${aws_lambda_function.import_stocks_data.arn}"
         }
       ]
    })
@@ -132,6 +138,7 @@ resource "aws_lambda_function" "get_stocks_data" {
    variables = {
      STOCKS_TABLE = aws_dynamodb_table.stocks_table.name
      STOCKS_META_TABLE = aws_dynamodb_table.stocks_meta_table.name
+     IMPORT_STOCKS_FUNCTION = aws_lambda_function.import_stocks_data.arn
    }
  }
  memory_size = "128"
@@ -143,7 +150,7 @@ resource "aws_lambda_function" "get_stocks_data" {
  ]
  handler = "stocks.get_stocks_data.handler"
  function_name = "get_stocks_data"
- timeout = 20
+ timeout = 240
  role = aws_iam_role.iam_for_lambda.arn
  filename = data.archive_file.lambdas_data_archive.output_path
  source_code_hash = data.archive_file.lambdas_data_archive.output_base64sha256
