@@ -12,7 +12,6 @@ from .lib.constants import SYSTEM_PROMPT_TABLES, StockDataKey
 from .lib.data import fetch_oldest_stock_meta, update_last_import, update_stock_data
 from .lib.helper import find_curr, text_currency_to_float
 from .lib.url import search_boerse_de_url, search_fnet_estimation_url, search_fnet_guv_url
-from .lib.data_completer import fill_missing_values
 from .lib.data_helper import dataframe_to_items
 from .lib.table_helper import find_table_entries
 
@@ -53,9 +52,6 @@ def handler(event, context):
         process_import(scrappey_key, f_net_estimation_url, stock_isin, openai_key)
 
     update_last_import(stock_isin)
-
-    stock_df = fill_missing_values(stock_isin)
-    persist_df(stock_df, stock_isin)
 
 
 def process_import(scrappey_key: str, url: str, stock_isin: str, openai_key: str):
@@ -257,9 +253,13 @@ def read_table_row(
                     formatted_data = f"{formatted_data} {currency}"
                 if (
                     (section == StockDataKey.DIVIDEND_YIELD.value or section == StockDataKey.EQUITY_RATIO.value)
-                    and "%" not in str(formatted_data)
                 ):
-                    formatted_data = f"{formatted_data} %"
+                    # 1.28 -> 1.28%
+                    if "%" not in str(formatted_data):
+                        formatted_data = f"{formatted_data}%"
+                                    # 1.28 % -> 1.28%
+                if isinstance(formatted_data, str) and "%" in formatted_data:
+                    formatted_data = formatted_data.replace(" ", "")
                 # dont include stock count = 0
                 if section == StockDataKey.STOCK_COUNT.value and formatted_data == 0:
                     formatted_data = None

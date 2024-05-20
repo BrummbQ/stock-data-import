@@ -64,6 +64,10 @@ def calculate_kbv(stock_df: pd.DataFrame) -> pd.DataFrame:
 
 def calculate_stock_count(stock_df: pd.DataFrame) -> pd.DataFrame:
     if StockDataKey.STOCK_COUNT.value in stock_df:
+        # drop stupid 0 values
+        stock_df[StockDataKey.STOCK_COUNT.value] = stock_df[
+            StockDataKey.STOCK_COUNT.value
+        ].replace(0, np.nan)
         stock_df[StockDataKey.STOCK_COUNT.value] = stock_df[
             StockDataKey.STOCK_COUNT.value
         ].ffill()
@@ -129,12 +133,12 @@ def calculate_kuv(stock_df: pd.DataFrame) -> pd.DataFrame:
     return stock_df
 
 
-def fill_missing_values(stock_isin: str):
+def fill_missing_values(stock_isin: str) -> None | pd.DataFrame:
     data = fetch_stock_data(stock_isin)
     if not len(data):
         print("Could not find data for:", stock_isin)
         return
-    stock_df = pd.DataFrame.from_records(data)
+    stock_df = pd.DataFrame.from_records(data, index="Year")
 
     stock_df = calculate_stock_count(stock_df)
     stock_df = calculate_pps(stock_df)

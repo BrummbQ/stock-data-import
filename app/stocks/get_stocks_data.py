@@ -1,11 +1,11 @@
 import io
-import pandas as pd
 from datetime import datetime, timezone
 import csv
 
 
-from .lib.data import fetch_stock_data, fetch_stock_meta, add_stock_meta
+from .lib.data import fetch_stock_meta, add_stock_meta
 from .lib.constants import StockDataKey
+from .lib.data_completer import fill_missing_values
 
 
 def handler(event, context):
@@ -18,15 +18,6 @@ def handler(event, context):
         add_stock_meta(stock_isin)
     else:
         print("Stock entry found:", meta_item)
-
-    # read stocks data
-    items = fetch_stock_data(stock_isin)
-    if not len(items):
-        return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "text/csv"},
-            "body": "",
-        }
 
     fields = [
         StockDataKey.SALES,
@@ -50,8 +41,15 @@ def handler(event, context):
     ]
     fields = map(lambda i: i.value, fields)
 
-    # create df
-    data_df_raw = pd.DataFrame.from_records(items, index="Year")
+    # read stocks data and create df
+    data_df_raw = fill_missing_values(stock_isin)
+    if data_df_raw is None:
+        return {
+            "statusCode": 200,
+            "headers": {"Content-Type": "text/csv"},
+            "body": "",
+        }
+
     data_df_raw = data_df_raw.reindex(columns=fields)
     data_df = data_df_raw.transpose()
     # filter df by years
