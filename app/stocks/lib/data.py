@@ -4,7 +4,12 @@ from boto3.dynamodb.conditions import Key
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from .constants import StockMetaFields
+from .constants import StockMetaFields, StockStoryItem
+
+
+stories_table_name = os.environ["STOCKS_STORY_TABLE"]
+dynamodb = boto3.resource("dynamodb", region_name="eu-west-3")
+story_table = dynamodb.Table(stories_table_name)
 
 
 def connect_stocks_table():
@@ -117,3 +122,11 @@ def update_last_import(stock_isin: str):
         UpdateExpression=f"SET {StockMetaFields.last_import.name} = :val1",
         ExpressionAttributeValues={":val1": Decimal(str(now))},
     )
+
+
+def add_stock_stories(stories: list[StockStoryItem]):
+    print(f"Write {len(stories)} story items")
+    with story_table.batch_writer() as batch:
+        for item in stories:
+            batch.put_item(Item=item)
+    print(f"{len(stories)} story items written")

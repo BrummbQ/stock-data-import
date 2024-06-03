@@ -49,6 +49,28 @@ resource "aws_dynamodb_table" "stocks_meta_table" {
   }
 }
 
+resource "aws_dynamodb_table" "stocks_story_table" {
+  name           = "stocks-story-table"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "ISIN"
+  range_key      = "source_url"
+  table_class    = "STANDARD_INFREQUENT_ACCESS" 
+
+  attribute {
+    name = "ISIN"
+    type = "S"
+  }
+
+  attribute {
+    name = "source_url"
+    type = "S"
+  }
+
+  tags = {
+    Environment = "production"
+  }
+}
+
 resource "aws_s3_bucket" "lambda_layer_source" {
   tags = {
     Description        = "Bucket for lambda layers"
@@ -109,6 +131,11 @@ resource "aws_iam_role_policy" "lambda_role_policy" {
            "Effect" : "Allow",
            "Action" : ["dynamodb:*"],
            "Resource" : "${aws_dynamodb_table.stocks_meta_table.arn}"
+        },
+        {
+           "Effect" : "Allow",
+           "Action" : ["dynamodb:*"],
+           "Resource" : "${aws_dynamodb_table.stocks_story_table.arn}"
         },
         {
           "Sid": "SecretsManagerPermission",
@@ -191,6 +218,36 @@ resource "aws_cloudwatch_log_group" "import_stocks_data_log" {
   retention_in_days = 30
 }
 
+resource "aws_lambda_function" "import_stocks_story" {
+ environment {
+   variables = {
+     STOCKS_TABLE = aws_dynamodb_table.stocks_table.name
+     STOCKS_META_TABLE = aws_dynamodb_table.stocks_meta_table.name
+     STOCKS_STORY_TABLE = aws_dynamodb_table.stocks_story_table.name
+   }
+ }
+ memory_size = "256"
+ runtime = "python3.12"
+ architectures = ["arm64"]
+ layers = [
+  aws_lambda_layer_version.lambda_python_layer.arn,
+  "arn:aws:lambda:eu-west-3:780235371811:layer:AWS-Parameters-and-Secrets-Lambda-Extension-Arm64:8",
+  "arn:aws:lambda:eu-west-3:336392948345:layer:AWSSDKPandas-Python312-Arm64:6"
+ ]
+ handler = "stocks.import_stocks_story.handler"
+ function_name = "import_stocks_story"
+ timeout = 240
+ role = aws_iam_role.iam_for_lambda.arn
+ filename = data.archive_file.lambdas_data_archive.output_path
+ source_code_hash = data.archive_file.lambdas_data_archive.output_base64sha256
+}
+
+resource "aws_cloudwatch_log_group" "import_stocks_story_log" {
+  name = "/aws/lambda/${aws_lambda_function.import_stocks_story.function_name}"
+
+  retention_in_days = 30
+}
+
 resource "aws_apigatewayv2_api" "lambda_stocks" {
   name          = "serverless_lambda_gw"
   protocol_type = "HTTP"
@@ -260,6 +317,17 @@ resource "aws_cloudwatch_event_target" "trigger_import_stock_lambda_on_schedule"
   rule      = aws_cloudwatch_event_rule.import_stock_lambda_schedule.name
   target_id = "lambda"
   arn       = aws_lambda_function.import_stocks_data.arn
+}
+
+resource "aws_cloudwatch_event_rule" "import_stock_story_lambda_schedule" {
+  name                = "import-stock-story-lambda-schedule"
+  schedule_expression = "cron(10 0/2 * * ? *)"
+}
+
+resource "aws_cloudwatch_event_target" "trigger_import_stock_story_lambda_on_schedule" {
+  rule      = aws_cloudwatch_event_rule.import_stock_story_lambda_schedule.name
+  target_id = "lambda"
+  arn       = aws_lambda_function.import_stocks_story.arn
 }
 
 resource "aws_lambda_permission" "allow_cloudwatch_to_call_import_stock_lambda" {

@@ -1,4 +1,6 @@
 from enum import Enum
+from typing import TypedDict
+from decimal import Decimal
 
 SYSTEM_PROMPT_TABLES = """
 You are stock and finance expert that generates CSV responses
@@ -98,3 +100,26 @@ stock_data_key_map = {
         "Personal am Jahresende",
     ],
 }
+
+StockStoryItem = TypedDict(
+    "StockStoryItem",
+    {
+        "ISIN": str,
+        "source_url": str,
+        "published_at": Decimal,
+        "fetched_at": Decimal,
+        "text_content": str,
+        "title": str,
+        "data_provider": str,
+    },
+)
+
+TradingviewStoryItem = TypedDict(
+    "TradingviewStoryItem",
+    {
+        "provider": str,
+        "published": int,
+        "storyPath": str,
+        "title": str,
+    },
+)
