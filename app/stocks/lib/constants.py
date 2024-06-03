@@ -52,7 +52,7 @@ class StockDataKey(Enum):
 
 
 StockMetaFields = Enum(
-    "StockMetaFields", ["last_import", "fnet_estimation_url", "fnet_guv_url"]
+    "StockMetaFields", ["last_import", "last_story_import", "fnet_estimation_url", "fnet_guv_url"]
 )
 
 

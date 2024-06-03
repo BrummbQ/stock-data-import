@@ -1,4 +1,8 @@
-from .lib.data import fetch_oldest_stock_meta, add_stock_stories
+from .lib.data import (
+    fetch_oldest_stock_story_meta,
+    add_stock_stories,
+    update_last_story_import,
+)
 from .lib.story_scraper import fetch_stories
 
 
@@ -9,7 +13,7 @@ def handler(event, context):
         or "queryStringParameters" not in event
         or "ISIN" not in event["queryStringParameters"]
     ):
-        stock_isin = fetch_oldest_stock_meta()
+        stock_isin = fetch_oldest_stock_story_meta()
     else:
         # import this
         stock_isin = event["queryStringParameters"]["ISIN"]
@@ -20,3 +24,4 @@ def handler(event, context):
     print("Start importing stocks stories for:", stock_isin)
     stories = fetch_stories(stock_isin)
     add_stock_stories(stories)
+    update_last_story_import(stock_isin)

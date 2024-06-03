@@ -26,7 +26,13 @@ def connect_stocks_meta_table():
 
 def add_stock_meta(stock_isin: str):
     meta_table = connect_stocks_meta_table()
-    meta_table.put_item(Item={"ISIN": stock_isin, StockMetaFields.last_import.name: 0})
+    meta_table.put_item(
+        Item={
+            "ISIN": stock_isin,
+            StockMetaFields.last_import.name: 0,
+            StockMetaFields.last_story_import.name: 0,
+        }
+    )
 
 
 def fetch_stock_meta(stock_isin: str):
@@ -73,7 +79,23 @@ def fetch_oldest_stock_meta() -> str | None:
     if "Items" in response:
         # sort by last_import
         sorted_stocks = sorted(
-            response["Items"], key=lambda item: item[StockMetaFields.last_import.name]
+            response["Items"],
+            key=lambda item: item.get(StockMetaFields.last_import.name, 0),
+        )
+        if len(sorted_stocks):
+            return sorted_stocks[0]["ISIN"]
+
+    return None
+
+
+def fetch_oldest_stock_story_meta() -> str | None:
+    meta_table = connect_stocks_meta_table()
+    response = meta_table.scan()
+    if "Items" in response:
+        # sort by last_story_import
+        sorted_stocks = sorted(
+            response["Items"],
+            key=lambda item: item.get(StockMetaFields.last_story_import.name, 0),
         )
         if len(sorted_stocks):
             return sorted_stocks[0]["ISIN"]
@@ -120,6 +142,16 @@ def update_last_import(stock_isin: str):
     meta_table.update_item(
         Key={"ISIN": stock_isin},
         UpdateExpression=f"SET {StockMetaFields.last_import.name} = :val1",
+        ExpressionAttributeValues={":val1": Decimal(str(now))},
+    )
+
+
+def update_last_story_import(stock_isin: str):
+    meta_table = connect_stocks_meta_table()
+    now = datetime.now(timezone.utc).timestamp()
+    meta_table.update_item(
+        Key={"ISIN": stock_isin},
+        UpdateExpression=f"SET {StockMetaFields.last_story_import.name} = :val1",
         ExpressionAttributeValues={":val1": Decimal(str(now))},
     )
 
