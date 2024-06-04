@@ -16,3 +16,4 @@ venv
 terraform.tfstate
 terraform.tfstate.*
 .terraform.tfstate.lock.info
+secrets.auto.tfvars

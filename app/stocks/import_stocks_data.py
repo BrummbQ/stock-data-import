@@ -5,7 +5,6 @@ from bs4 import BeautifulSoup
 from io import StringIO
 import pandas as pd
 from openai import OpenAI
-import time
 import traceback
 
 from .lib.constants import SYSTEM_PROMPT_TABLES, StockDataKey
@@ -31,9 +30,8 @@ def handler(event, context):
     if stock_isin is None:
         raise Exception("Could not find ISIN")
 
-    stocks_secret = get_secret("Stocks_Scrappey_Key")
-    scrappey_key = stocks_secret["SCRAPPEY_API_KEY"]
-    openai_key = stocks_secret["OPENAI_API_KEY"]
+    scrappey_key = os.environ["SCRAPPEY_API_KEY"]
+    openai_key = os.environ["OPENAI_API_KEY"]
 
     print("Start importing stock", stock_isin)
 
@@ -73,29 +71,6 @@ def process_html(stock_isin: str, openai_key: str, page_html: str):
     tables_metadata = find_table_entries(stock_dfs)
     stock_df = create_stock_df(currencies, tables_metadata, stock_dfs)
     persist_df(stock_df, stock_isin)
-
-
-def get_secret(secret_name: str):
-    headers = {"X-Aws-Parameters-Secrets-Token": os.environ.get("AWS_SESSION_TOKEN")}
-
-    secrets_extension_http_port = "2773"
-    secrets_extension_endpoint = (
-        "http://localhost:"
-        + secrets_extension_http_port
-        + "/secretsmanager/get?secretId="
-        + secret_name
-    )
-
-    resp = requests.get(secrets_extension_endpoint, headers=headers)
-    if resp.status_code == 400:
-        # sometimes ext not ready, so wait a bit
-        time.sleep(1)
-        resp = requests.get(secrets_extension_endpoint, headers=headers)
-
-    secret = resp.json()
-    secretValue = json.loads(secret["SecretString"])
-
-    return secretValue
 
 
 def fetch_html(api_key: str, source_url: str) -> str:

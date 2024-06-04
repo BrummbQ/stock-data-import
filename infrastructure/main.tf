@@ -11,6 +11,16 @@ provider "aws" {
   shared_credentials_files = ["$HOME/.aws/credentials"]
 }
 
+variable "SCRAPPEY_API_KEY" {
+  type = string
+  sensitive = true
+}
+
+variable "OPENAI_API_KEY" {
+  type = string
+  sensitive = true
+}
+
 resource "aws_dynamodb_table" "stocks_table" {
   name           = "stocks-table"
   billing_mode   = "PAY_PER_REQUEST"
@@ -194,6 +204,8 @@ resource "aws_lambda_function" "import_stocks_data" {
    variables = {
      STOCKS_TABLE = aws_dynamodb_table.stocks_table.name
      STOCKS_META_TABLE = aws_dynamodb_table.stocks_meta_table.name
+     SCRAPPEY_API_KEY = var.SCRAPPEY_API_KEY
+     OPENAI_API_KEY = var.OPENAI_API_KEY
    }
  }
  memory_size = "256"
@@ -201,7 +213,6 @@ resource "aws_lambda_function" "import_stocks_data" {
  architectures = ["arm64"]
  layers = [
   aws_lambda_layer_version.lambda_python_layer.arn,
-  "arn:aws:lambda:eu-west-3:780235371811:layer:AWS-Parameters-and-Secrets-Lambda-Extension-Arm64:8",
   "arn:aws:lambda:eu-west-3:336392948345:layer:AWSSDKPandas-Python312-Arm64:6"
  ]
  handler = "stocks.import_stocks_data.handler"
@@ -231,7 +242,6 @@ resource "aws_lambda_function" "import_stocks_story" {
  architectures = ["arm64"]
  layers = [
   aws_lambda_layer_version.lambda_python_layer.arn,
-  "arn:aws:lambda:eu-west-3:780235371811:layer:AWS-Parameters-and-Secrets-Lambda-Extension-Arm64:8",
   "arn:aws:lambda:eu-west-3:336392948345:layer:AWSSDKPandas-Python312-Arm64:6"
  ]
  handler = "stocks.import_stocks_story.handler"
@@ -319,6 +329,14 @@ resource "aws_cloudwatch_event_target" "trigger_import_stock_lambda_on_schedule"
   arn       = aws_lambda_function.import_stocks_data.arn
 }
 
+resource "aws_lambda_permission" "allow_cloudwatch_to_call_import_stock_lambda" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.import_stocks_data.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.import_stock_lambda_schedule.arn
+}
+
 resource "aws_cloudwatch_event_rule" "import_stock_story_lambda_schedule" {
   name                = "import-stock-story-lambda-schedule"
   schedule_expression = "cron(10 0/2 * * ? *)"
@@ -330,10 +348,10 @@ resource "aws_cloudwatch_event_target" "trigger_import_stock_story_lambda_on_sch
   arn       = aws_lambda_function.import_stocks_story.arn
 }
 
-resource "aws_lambda_permission" "allow_cloudwatch_to_call_import_stock_lambda" {
+resource "aws_lambda_permission" "allow_cloudwatch_to_call_import_stock_story_lambda" {
   statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.import_stocks_data.function_name
+  function_name = aws_lambda_function.import_stocks_story.function_name
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.import_stock_lambda_schedule.arn
+  source_arn    = aws_cloudwatch_event_rule.import_stock_story_lambda_schedule.arn
 }

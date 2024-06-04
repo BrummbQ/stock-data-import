@@ -7,11 +7,6 @@ from decimal import Decimal
 from .constants import StockMetaFields, StockStoryItem
 
 
-stories_table_name = os.environ["STOCKS_STORY_TABLE"]
-dynamodb = boto3.resource("dynamodb", region_name="eu-west-3")
-story_table = dynamodb.Table(stories_table_name)
-
-
 def connect_stocks_table():
     table_name = os.environ["STOCKS_TABLE"]
     dynamodb = boto3.resource("dynamodb", region_name="eu-west-3")
@@ -22,6 +17,12 @@ def connect_stocks_meta_table():
     meta_table_name = os.environ["STOCKS_META_TABLE"]
     dynamodb = boto3.resource("dynamodb", region_name="eu-west-3")
     return dynamodb.Table(meta_table_name)
+
+
+def connect_stocks_story_table():
+    stories_table_name = os.environ["STOCKS_STORY_TABLE"]
+    dynamodb = boto3.resource("dynamodb", region_name="eu-west-3")
+    return dynamodb.Table(stories_table_name)
 
 
 def add_stock_meta(stock_isin: str):
@@ -157,6 +158,7 @@ def update_last_story_import(stock_isin: str):
 
 
 def add_stock_stories(stories: list[StockStoryItem]):
+    story_table = connect_stocks_story_table()
     print(f"Write {len(stories)} story items")
     with story_table.batch_writer() as batch:
         for item in stories:
