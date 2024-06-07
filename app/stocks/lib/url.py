@@ -24,6 +24,8 @@ def search_fnet_stock_name(stock_isin: str) -> str | None:
         print("Found fnet stock name:", stock_url)
         return stock_url
 
+    return None
+
 
 def search_fnet_estimation_url(stock_isin: str) -> str | None:
     stock_meta = fetch_stock_meta(stock_isin)
@@ -42,6 +44,8 @@ def search_fnet_estimation_url(stock_isin: str) -> str | None:
             update_stock_meta(stock_isin, fnet_estimation=stock_url)
             return stock_url
 
+    return None
+
 
 def search_fnet_guv_url(stock_isin: str) -> str | None:
     stock_meta = fetch_stock_meta(stock_isin)
@@ -59,6 +63,8 @@ def search_fnet_guv_url(stock_isin: str) -> str | None:
             print("Found fnet guv url:", stock_url)
             update_stock_meta(stock_isin, fnet_guv=stock_url)
             return stock_url
+
+    return None
 
 
 def query_ddg(query: str):

@@ -2,17 +2,17 @@ import pandas as pd
 import numpy as np
 from unittest import TestCase, main
 from stocks.lib.constants import StockDataKey
-from stocks.lib.data_completer import calculate_kuv, is_valid, calculate_sps
+from stocks.lib.data_completer import calculate_kuv, is_valid_float, calculate_sps
 
 
 class TestIsValid(TestCase):
     def test_is_valid(self):
-        self.assertTrue(is_valid(1))
-        self.assertFalse(is_valid(None))
-        self.assertFalse(is_valid(np.nan))
-        self.assertFalse(is_valid(0))
-        self.assertTrue(is_valid(""))
-        self.assertTrue(is_valid("hello"))
+        self.assertTrue(is_valid_float(1))
+        self.assertFalse(is_valid_float(None))
+        self.assertFalse(is_valid_float(np.nan))
+        self.assertFalse(is_valid_float(0))
+        self.assertTrue(is_valid_float(""))
+        self.assertTrue(is_valid_float("hello"))
 
 
 class TestCalculateKuv(TestCase):

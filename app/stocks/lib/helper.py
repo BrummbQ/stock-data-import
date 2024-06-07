@@ -11,7 +11,7 @@ def is_number_optional_suffix(value) -> bool:
         return False
 
     if isinstance(value, Decimal) and value.is_nan():
-        return False;
+        return False
 
     try:
         float_value = float(value)
@@ -47,6 +47,8 @@ def find_curr(text: str) -> str | None:
     for c in curr:
         if c in text:
             return c
+
+    return None
 
 
 # convert text to float: "1,5" => 1.5 "3.5" => 3.5

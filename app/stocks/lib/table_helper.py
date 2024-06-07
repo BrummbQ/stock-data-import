@@ -3,7 +3,7 @@ from difflib import SequenceMatcher
 import csv
 import io
 
-from .constants import stock_data_key_map
+from .constants import SimilarityKeyEntry, SimilarityMap, stock_data_key_map
 
 
 def calculate_similarity(val1, val2) -> float:
@@ -16,17 +16,17 @@ def calculate_similarity(val1, val2) -> float:
 
 def find_table_entries(stock_dfs: list[pd.DataFrame]) -> str:
     # calculate similarities for keys
-    keys_map = {}
+    keys_map: SimilarityMap = {}
     for i, stock_df in enumerate(stock_dfs):
         for row in stock_df[stock_df.columns[0]]:
             for key in stock_data_key_map:
                 synonyms = stock_data_key_map[key]
-                similarities = []
+                similarities: list[float] = []
                 for s in synonyms:
                     similarities.append(calculate_similarity(row, s))
 
                 similarity_score = max(similarities)
-                key_entry = {
+                key_entry: SimilarityKeyEntry = {
                     "table": i,
                     "similarity": similarity_score,
                     "column": row,

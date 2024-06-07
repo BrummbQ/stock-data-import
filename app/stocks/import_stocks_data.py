@@ -6,8 +6,9 @@ from io import StringIO
 import pandas as pd
 from openai import OpenAI
 import traceback
+from typing import Any
 
-from .lib.constants import SYSTEM_PROMPT_TABLES, StockDataKey
+from .lib.constants import SYSTEM_PROMPT_TABLES, StockDataKey, PageCurrencies
 from .lib.data import fetch_oldest_stock_meta, update_last_import, update_stock_data
 from .lib.helper import find_curr, text_currency_to_float
 from .lib.url import search_boerse_de_url, search_fnet_estimation_url, search_fnet_guv_url
@@ -70,7 +71,8 @@ def process_html(stock_isin: str, openai_key: str, page_html: str):
     #tables_metadata = fetch_tables_metadata(openai_key, page_tables)
     tables_metadata = find_table_entries(stock_dfs)
     stock_df = create_stock_df(currencies, tables_metadata, stock_dfs)
-    persist_df(stock_df, stock_isin)
+    if stock_df is not None:
+        persist_df(stock_df, stock_isin)
 
 
 def fetch_html(api_key: str, source_url: str) -> str:
@@ -120,7 +122,7 @@ def titles_from_html(page_html: str) -> str:
     return html_tables_titles_str
 
 
-def fetch_currencies(api_key: str, page_tables: str, page_titles: str):
+def fetch_currencies(api_key: str, page_tables: str, page_titles: str) -> PageCurrencies | None:
     client = OpenAI(api_key=api_key)
 
     prompt = f"""
@@ -148,12 +150,15 @@ def fetch_currencies(api_key: str, page_tables: str, page_titles: str):
         ],
         model="gpt-3.5-turbo",
     )
-    currencies = json.loads(response_body_cur.choices[0].message.content)
+    content = response_body_cur.choices[0].message.content
+    if content is None:
+        return None
+    currencies = json.loads(content)
     print("Fetched currencies", currencies)
     return currencies
 
 
-def fetch_tables_metadata(api_key: str, page_tables: str) -> str:
+def fetch_tables_metadata(api_key: str, page_tables: str) -> str | None:
     client = OpenAI(api_key=api_key)
 
     prompt = f"""
@@ -181,16 +186,16 @@ def fetch_tables_metadata(api_key: str, page_tables: str) -> str:
 
 
 def read_table_row(
-    section: str, key: str, row: str, dfs: list[pd.DataFrame], currency=None, multiply=False
+    section: str, key: int, row: int, dfs: list[pd.DataFrame], currency=None, multiply=False
 ) -> pd.DataFrame:
     if key == None or row == None:
         return pd.DataFrame()
     table_df: pd.DataFrame = dfs[key]
-    years = []
+    years: list[int] = []
     data = []
     for col in table_df:
         try:
-            year = col
+            year: Any = col
             if isinstance(year, str):
                 # reformat year (13/14 -> 2014)
                 if "/" in year:
@@ -251,7 +256,7 @@ def read_table_row(
 
 def create_stock_df(
     currency_data, tables_metadata: str, dfs: list[pd.DataFrame]
-) -> pd.DataFrame:
+) -> pd.DataFrame | None:
     if tables_metadata is None or tables_metadata.strip() == "":
         return None
 
@@ -265,7 +270,7 @@ def create_stock_df(
     formatted_dfs = []
     for i in tables_df.index:
         section = tables_df["category"][i]
-        table = tables_df["table"][i]
+        table = int(tables_df["table"][i])
         col = tables_df["column"][i]
         first_col = dfs[table].columns[0]
         col_list = dfs[table][first_col].to_list()
@@ -301,7 +306,7 @@ def create_stock_df(
             read_table_row(section, table, col_pos, dfs, currency, multiply)
         )
 
-    complete_df: pd.DataFrame = None
+    complete_df: pd.DataFrame | None = None
     for df in formatted_dfs:
         print("Formatted DF:", df)
         if not df.empty:

@@ -40,12 +40,23 @@ def find_stock_symbol(stock_isin: str) -> str:
         raise Exception("Could not find tradingview symbols")
 
     first_symbol = symbol_data["symbols"][0]
-    tradingview_symbol = f"{first_symbol['exchange']}:{first_symbol['symbol']}"
+    symbol = first_symbol["symbol"]
+    # cleanup symbol, sometimes they contain html markup
+    symbol_soup = BeautifulSoup(symbol, "html.parser")
+    symbol = symbol_soup.get_text()
+
+    tradingview_symbol = f"{first_symbol['exchange']}:{symbol}"
     print("Found tradingview symbol:", tradingview_symbol)
     return tradingview_symbol
 
 
-def fetch_stories(stock_isin: str) -> list[TradingviewStoryItem]:
+def build_story_url(story_item: TradingviewStoryItem) -> str:
+    return TRADINGVIEW_BASE_URL + story_item["storyPath"]
+
+
+def fetch_stories(
+    stock_isin: str, old_stories: list[StockStoryItem]
+) -> list[StockStoryItem]:
     tradingview_symbol = find_stock_symbol(stock_isin)
     tradingview_symbol_escaped = quote(tradingview_symbol)
     stories_api_url = f"https://news-headlines.tradingview.com/v2/view/headlines/symbol?client=web&lang=en&section=&streaming=false&symbol={tradingview_symbol_escaped}"
@@ -56,10 +67,23 @@ def fetch_stories(stock_isin: str) -> list[TradingviewStoryItem]:
         raise Exception("Failed to fetch tradingview story list")
 
     stories_data = stories_response.json()
-    items = stories_data["items"]
-    stories_result: list[TradingviewStoryItem] = []
+    items: list[TradingviewStoryItem] = stories_data["items"]
+    stories_result: list[StockStoryItem] = []
     # only get the latest 50 stories
-    for item in items[:50]:
+    items = items[:50]
+
+    # diff with old stories, so we dont fetch a story twice
+    new_stories = [
+        story
+        for story in items
+        if not any(
+            build_story_url(story) == old_story["source_url"]
+            for old_story in old_stories
+        )
+    ]
+
+    # fetch each new story
+    for item in new_stories:
         story_item = fetch_story(stock_isin, item)
         if story_item is not None:
             stories_result.append(story_item)
@@ -70,9 +94,9 @@ def fetch_stories(stock_isin: str) -> list[TradingviewStoryItem]:
 def fetch_story(
     stock_isin: str, story_item: TradingviewStoryItem
 ) -> StockStoryItem | None:
-    story_url = TRADINGVIEW_BASE_URL + story_item["storyPath"]
+    story_url = build_story_url(story_item)
 
-    print("Fetching tradingview story")
+    print("Fetching tradingview story:", story_url)
     story_response = requests.get(story_url)
     if story_response.status_code != 200:
         raise Exception("Failed to fetch tradingview story item")
@@ -97,6 +121,7 @@ def fetch_story(
             "text_content": story_article.text,
             "title": story_item["title"],
             "data_provider": story_item["provider"],
+            "external_id": story_item["id"],
         }
 
     print("Could not find text content for story!", story_url)

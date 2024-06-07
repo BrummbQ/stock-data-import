@@ -1,12 +1,13 @@
 import pandas as pd
 import numpy as np
+from typing import TypeGuard
 
 from .helper import find_curr, text_to_float
 from .constants import StockDataKey
 from .data import fetch_stock_data
 
 
-def is_valid(value) -> bool:
+def is_valid_float(value) -> TypeGuard[float]:
     return value is not None and value is not np.nan and value != 0
 
 
@@ -17,12 +18,12 @@ def calculate_pps(stock_df: pd.DataFrame) -> pd.DataFrame:
     ):
         return stock_df
 
-    pps_list = []
+    pps_list: list[str | float] = []
 
     for i in stock_df.index:
         EPS = text_to_float(stock_df[StockDataKey.EARNINGS_PER_SHARE.value][i])
         KGV = text_to_float(stock_df[StockDataKey.KGV.value][i])
-        if is_valid(EPS) and is_valid(KGV):
+        if is_valid_float(EPS) and is_valid_float(KGV):
             curr = find_curr(stock_df[StockDataKey.EARNINGS_PER_SHARE.value][i])
             PPS = EPS * KGV
             pps_list.append(f"{PPS:.2f} {curr}")
@@ -49,7 +50,7 @@ def calculate_kbv(stock_df: pd.DataFrame) -> pd.DataFrame:
             KBV = stock_df[StockDataKey.KBV.value][i]
         BPS = text_to_float(stock_df[StockDataKey.BOOK_PER_SHARE.value][i])
         PPS = text_to_float(stock_df[StockDataKey.PRICE_PER_SHARE.value][i])
-        if is_valid(BPS) and is_valid(PPS):
+        if is_valid_float(BPS) and is_valid_float(PPS):
             KBV = PPS / BPS
             KBV = float("{:.2f}".format(KBV))
             kbv_list.append(KBV)
@@ -91,8 +92,8 @@ def calculate_sps(stock_df: pd.DataFrame) -> pd.DataFrame:
         sales_curr = find_curr(stock_df[StockDataKey.SALES.value][i])
         stock_count_value = text_to_float(stock_df[StockDataKey.STOCK_COUNT.value][i])
         if (
-            is_valid(sales_value)
-            and is_valid(stock_count_value)
+            is_valid_float(sales_value)
+            and is_valid_float(stock_count_value)
             and sales_curr is not None
         ):
             sps_value = sales_value / stock_count_value
@@ -121,7 +122,7 @@ def calculate_kuv(stock_df: pd.DataFrame) -> pd.DataFrame:
             kuv_value = stock_df[StockDataKey.KUV.value][i]
         sps_value = text_to_float(stock_df[StockDataKey.SALES_PER_SHARE.value][i])
         pps_value = text_to_float(stock_df[StockDataKey.PRICE_PER_SHARE.value][i])
-        if is_valid(sps_value) and is_valid(pps_value):
+        if is_valid_float(sps_value) and is_valid_float(pps_value):
             kuv_value = pps_value / sps_value
             kuv_list.append(float("{:.2f}".format(kuv_value)))
         else:
@@ -137,7 +138,8 @@ def fill_missing_values(stock_isin: str) -> None | pd.DataFrame:
     data = fetch_stock_data(stock_isin)
     if not len(data):
         print("Could not find data for:", stock_isin)
-        return
+        return None
+
     stock_df = pd.DataFrame.from_records(data, index="Year")
 
     stock_df = calculate_stock_count(stock_df)

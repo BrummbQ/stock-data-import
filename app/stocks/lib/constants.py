@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import TypedDict
+from typing import TypedDict, Dict, Any
 from decimal import Decimal
 
 SYSTEM_PROMPT_TABLES = """
@@ -52,9 +52,14 @@ class StockDataKey(Enum):
 
 
 StockMetaFields = Enum(
-    "StockMetaFields", ["last_import", "last_story_import", "fnet_estimation_url", "fnet_guv_url"]
+    "StockMetaFields",
+    ["last_import", "last_story_import", "fnet_estimation_url", "fnet_guv_url"],
 )
 
+StockStoryFields = Enum(
+    "StockStoryFields",
+    ["source_url"],
+)
 
 stock_data_key_map = {
     StockDataKey.SALES.value: ["Umsatzerlöse in Mio.", "Umsatz", "Umsatzerlöse"],
@@ -101,6 +106,7 @@ stock_data_key_map = {
     ],
 }
 
+# structure persisted in story table
 StockStoryItem = TypedDict(
     "StockStoryItem",
     {
@@ -111,15 +117,32 @@ StockStoryItem = TypedDict(
         "text_content": str,
         "title": str,
         "data_provider": str,
+        "external_id": str,
     },
 )
 
+# from tradingview api
 TradingviewStoryItem = TypedDict(
     "TradingviewStoryItem",
     {
+        "id": str,
         "provider": str,
         "published": int,
         "storyPath": str,
         "title": str,
     },
 )
+
+PageCurrencies = TypedDict(
+    "PageCurrencies", {"dataCurrency": str, "salesCurrency": str}
+)
+
+SimilarityKeyEntry = TypedDict(
+    "SimilarityKeyEntry",
+    {
+        "table": int,
+        "similarity": float,
+        "column": Any,
+    },
+)
+SimilarityMap = Dict[str, SimilarityKeyEntry]

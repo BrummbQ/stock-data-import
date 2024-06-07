@@ -4,7 +4,7 @@ from boto3.dynamodb.conditions import Key
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from .constants import StockMetaFields, StockStoryItem
+from .constants import StockMetaFields, StockStoryItem, StockStoryFields
 
 
 def connect_stocks_table():
@@ -118,7 +118,7 @@ def update_stock_data(stock_isin: str, year: int, item: dict):
 
     # generate update expr
     update_expr = list(map(lambda i: f"{i} = :{i}", list(item.keys())))
-    update_expr = ", ".join(update_expr)
+    update_expr_joined = ", ".join(update_expr)
 
     # generate expr attr vals
     expr_attr = {}
@@ -126,13 +126,13 @@ def update_stock_data(stock_isin: str, year: int, item: dict):
         expr_attr[f":{key}"] = item[key]
 
     print("Write item", item)
-    print("Expr", update_expr)
+    print("Expr", update_expr_joined)
 
     # write item
     table = connect_stocks_table()
     table.update_item(
         Key={"ISIN": stock_isin, "Year": year},
-        UpdateExpression=f"SET {update_expr}",
+        UpdateExpression=f"SET {update_expr_joined}",
         ExpressionAttributeValues=expr_attr,
     )
 
@@ -164,3 +164,13 @@ def add_stock_stories(stories: list[StockStoryItem]):
         for item in stories:
             batch.put_item(Item=item)
     print(f"{len(stories)} story items written")
+
+
+def fetch_stock_story_urls(stock_isin: str) -> list[StockStoryItem]:
+    story_table = connect_stocks_story_table()
+    response = story_table.query(
+        KeyConditionExpression=Key("ISIN").eq(stock_isin),
+        ProjectionExpression=StockStoryFields.source_url.name,
+    )
+    items = response["Items"]
+    return items

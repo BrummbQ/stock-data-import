@@ -148,12 +148,6 @@ resource "aws_iam_role_policy" "lambda_role_policy" {
            "Resource" : "${aws_dynamodb_table.stocks_story_table.arn}"
         },
         {
-          "Sid": "SecretsManagerPermission",
-          "Effect": "Allow",
-          "Action": "secretsmanager:GetSecretValue",
-          "Resource": "arn:aws:secretsmanager:eu-west-3:584235616162:secret:Stocks_Scrappey_Key-cc3kOa"
-        },
-        {
           "Sid": "InvokeImportStocksLambdaPermission",
           "Effect": "Allow",
           "Action": ["lambda:InvokeFunction"],
@@ -164,9 +158,11 @@ resource "aws_iam_role_policy" "lambda_role_policy" {
 }
 
 data "archive_file" "lambdas_data_archive" {
- source_dir = "../app"
- excludes   = ["../app/stocks/lib/__pycache__"]
- output_path = "../app.zip"
+ source_dir = "${path.module}/../app"
+ excludes   = [
+  "requirements.txt", ".mypy.ini", ".mypy_cache"
+ ]
+ output_path = "${path.module}/../app.zip"
  type = "zip"
 }
 
