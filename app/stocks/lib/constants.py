@@ -28,6 +28,12 @@ EmployeeCount (Personal, Mitarbeiter)
 Return a CSV with this headers: table;column;category
 """
 
+SENTIMENT_PROMPT = """
+Categorize this news into positive, negative or neutral. Only answer with the keyword without any more text
+
+{}
+"""
+
 
 class StockDataKey(Enum):
     YEAR = "Year"
@@ -58,7 +64,15 @@ StockMetaFields = Enum(
 
 StockStoryFields = Enum(
     "StockStoryFields",
-    ["source_url"],
+    [
+        "source_url",
+        "text_content",
+        "published_at",
+        "fetched_at",
+        "title",
+        "data_provider",
+        "sentiment",
+    ],
 )
 
 stock_data_key_map = {
@@ -146,3 +160,9 @@ SimilarityKeyEntry = TypedDict(
     },
 )
 SimilarityMap = Dict[str, SimilarityKeyEntry]
+
+
+class NewsSentiment(Enum):
+    POSITIVE = "positive"
+    NEUTRAL = "neutral"
+    NEGATIVE = "negative"

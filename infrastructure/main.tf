@@ -21,6 +21,11 @@ variable "OPENAI_API_KEY" {
   sensitive = true
 }
 
+variable "HUGGINGFACEHUB_API_TOKEN" {
+  type = string
+  sensitive = true
+}
+
 resource "aws_dynamodb_table" "stocks_table" {
   name           = "stocks-table"
   billing_mode   = "PAY_PER_REQUEST"
@@ -231,6 +236,7 @@ resource "aws_lambda_function" "import_stocks_story" {
      STOCKS_TABLE = aws_dynamodb_table.stocks_table.name
      STOCKS_META_TABLE = aws_dynamodb_table.stocks_meta_table.name
      STOCKS_STORY_TABLE = aws_dynamodb_table.stocks_story_table.name
+     HUGGINGFACEHUB_API_TOKEN = var.HUGGINGFACEHUB_API_TOKEN
    }
  }
  memory_size = "256"
@@ -242,7 +248,7 @@ resource "aws_lambda_function" "import_stocks_story" {
  ]
  handler = "stocks.import_stocks_story.handler"
  function_name = "import_stocks_story"
- timeout = 240
+ timeout = 480
  role = aws_iam_role.iam_for_lambda.arn
  filename = data.archive_file.lambdas_data_archive.output_path
  source_code_hash = data.archive_file.lambdas_data_archive.output_base64sha256

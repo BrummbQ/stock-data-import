@@ -1,3 +1,4 @@
+from .lib.news_sentiment import set_news_sentiment
 from .lib.data import (
     fetch_oldest_stock_story_meta,
     add_stock_stories,
@@ -27,6 +28,10 @@ def handler(event, context):
         old_stories = fetch_stock_story_urls(stock_isin)
         stories = fetch_stories(stock_isin, old_stories)
         add_stock_stories(stories)
+
+        # update sentiment for stock
+        print("Start sentiment categorization for:", stock_isin)
+        set_news_sentiment(stock_isin)
     finally:
         # also in case of errors update the timestamp so we move to the next one
         update_last_story_import(stock_isin)

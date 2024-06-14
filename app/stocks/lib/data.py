@@ -1,10 +1,10 @@
 import os
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Key, Attr
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from .constants import StockMetaFields, StockStoryItem, StockStoryFields
+from .constants import NewsSentiment, StockMetaFields, StockStoryItem, StockStoryFields
 
 
 def connect_stocks_table():
@@ -174,3 +174,44 @@ def fetch_stock_story_urls(stock_isin: str) -> list[StockStoryItem]:
     )
     items = response["Items"]
     return items
+
+
+def fetch_stock_stories(stock_isin: str) -> list[StockStoryItem]:
+    story_table = connect_stocks_story_table()
+    response = story_table.query(
+        KeyConditionExpression=Key("ISIN").eq(stock_isin),
+    )
+    items = response["Items"]
+    return items
+
+
+def fetch_stock_stories_without_sentiment(stock_isin: str) -> list[StockStoryItem]:
+    story_table = connect_stocks_story_table()
+    response = story_table.query(
+        KeyConditionExpression=Key("ISIN").eq(stock_isin),
+        FilterExpression=Attr(StockStoryFields.sentiment.name).eq(None)
+        | Attr(StockStoryFields.sentiment.name).eq("")
+        | Attr(StockStoryFields.sentiment.name).not_exists(),
+    )
+    items = response["Items"]
+    return items
+
+
+def update_stock_story_sentiment(
+    stock_isin: str, source_url: str, sentiment: NewsSentiment
+):
+    meta_table = connect_stocks_story_table()
+    update_expr_list = []
+    expr_values = {}
+
+    update_expr_list.append(
+        f"{StockStoryFields.sentiment.name} = :{StockStoryFields.sentiment.name}"
+    )
+    update_expr = ", ".join(update_expr_list)
+    expr_values[f":{StockStoryFields.sentiment.name}"] = sentiment.value
+
+    meta_table.update_item(
+        Key={"ISIN": stock_isin, "source_url": source_url},
+        UpdateExpression=f"SET {update_expr}",
+        ExpressionAttributeValues=expr_values,
+    )

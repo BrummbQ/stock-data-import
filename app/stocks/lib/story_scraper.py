@@ -44,8 +44,11 @@ def find_stock_symbol(stock_isin: str) -> str:
     # cleanup symbol, sometimes they contain html markup
     symbol_soup = BeautifulSoup(symbol, "html.parser")
     symbol = symbol_soup.get_text()
+    # cleanup exchange "abc de" -> "abc"
+    exchange = first_symbol["exchange"]
+    exchange = exchange.split(" ")[0]
 
-    tradingview_symbol = f"{first_symbol['exchange']}:{symbol}"
+    tradingview_symbol = f"{exchange}:{symbol}"
     print("Found tradingview symbol:", tradingview_symbol)
     return tradingview_symbol
 
