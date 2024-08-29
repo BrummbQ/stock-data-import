@@ -28,21 +28,28 @@ def find_curr(text: str) -> str | None:
         return None
 
     curr = [
-        "USD",
-        "EUR",
-        "HKD",
-        "CNY",
-        "CAD",
-        "KRW",
-        "DKK",
         "AUD",
+        "BRL",
+        "CAD",
+        "CHF",
+        "CNY",
         "CZK",
+        "DKK",
+        "EUR",
         "GBP",
+        "HKD",
         "JPY",
+        "KRW",
+        "MNT",
+        "MXN",
         "NOK",
         "PLN",
         "RUB",
-        "BRL",
+        "THB",
+        "TRY",
+        "UAH",
+        "USD",
+        "VND",
     ]
     for c in curr:
         if c in text:
