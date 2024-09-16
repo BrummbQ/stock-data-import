@@ -157,6 +157,12 @@ resource "aws_iam_role_policy" "lambda_role_policy" {
           "Effect": "Allow",
           "Action": ["lambda:InvokeFunction"],
           "Resource": "${aws_lambda_function.import_stocks_data.arn}"
+        },
+        {
+          "Sid": "InvokeImportStocksStoryLambdaPermission",
+          "Effect": "Allow",
+          "Action": ["lambda:InvokeFunction"],
+          "Resource": "${aws_lambda_function.import_stocks_story.arn}"
         }
       ]
    })
@@ -196,6 +202,35 @@ resource "aws_lambda_function" "get_stocks_data" {
 
 resource "aws_cloudwatch_log_group" "stocks_data_log" {
   name = "/aws/lambda/${aws_lambda_function.get_stocks_data.function_name}"
+
+  retention_in_days = 30
+}
+
+resource "aws_lambda_function" "get_stocks_story" {
+ environment {
+   variables = {
+     STOCKS_STORY_TABLE = aws_dynamodb_table.stocks_story_table.name
+     STOCKS_META_TABLE = aws_dynamodb_table.stocks_meta_table.name
+     IMPORT_STOCKS_STORY_FUNCTION = aws_lambda_function.import_stocks_story.arn
+   }
+ }
+ memory_size = "128"
+ runtime = "python3.12"
+ architectures = ["arm64"]
+ layers = [
+  aws_lambda_layer_version.lambda_python_layer.arn,
+  "arn:aws:lambda:eu-west-3:336392948345:layer:AWSSDKPandas-Python312-Arm64:6"
+ ]
+ handler = "stocks.get_stocks_story.handler"
+ function_name = "get_stocks_story"
+ timeout = 240
+ role = aws_iam_role.iam_for_lambda.arn
+ filename = data.archive_file.lambdas_data_archive.output_path
+ source_code_hash = data.archive_file.lambdas_data_archive.output_base64sha256
+}
+
+resource "aws_cloudwatch_log_group" "stocks_story_log" {
+  name = "/aws/lambda/${aws_lambda_function.get_stocks_story.function_name}"
 
   retention_in_days = 30
 }
@@ -305,16 +340,40 @@ resource "aws_apigatewayv2_route" "stocks_data" {
   target    = "integrations/${aws_apigatewayv2_integration.stocks_data.id}"
 }
 
+resource "aws_apigatewayv2_integration" "stocks_story" {
+  api_id = aws_apigatewayv2_api.lambda_stocks.id
+
+  integration_uri    = aws_lambda_function.get_stocks_story.invoke_arn
+  integration_type   = "AWS_PROXY"
+  integration_method = "POST"
+}
+
+resource "aws_apigatewayv2_route" "stocks_story" {
+  api_id = aws_apigatewayv2_api.lambda_stocks.id
+
+  route_key = "GET /stocks-story"
+  target    = "integrations/${aws_apigatewayv2_integration.stocks_story.id}"
+}
+
 resource "aws_cloudwatch_log_group" "api_gw" {
   name = "/aws/api_gw/${aws_apigatewayv2_api.lambda_stocks.name}"
 
   retention_in_days = 30
 }
 
-resource "aws_lambda_permission" "api_gw" {
+resource "aws_lambda_permission" "api_gw_allow_get_stocks_data" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.get_stocks_data.function_name
+  principal     = "apigateway.amazonaws.com"
+
+  source_arn = "${aws_apigatewayv2_api.lambda_stocks.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "api_gw_allow_get_stocks_story" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get_stocks_story.function_name
   principal     = "apigateway.amazonaws.com"
 
   source_arn = "${aws_apigatewayv2_api.lambda_stocks.execution_arn}/*/*"
